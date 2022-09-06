@@ -26,6 +26,7 @@ var (
 type Options struct {
 	Path          string
 	MaxCacheNodes int64
+	Less          func(a []byte, b []byte) (ok bool)
 }
 
 func New(opts Options) (tr *BTree, err error) {
@@ -49,6 +50,7 @@ func New(opts Options) (tr *BTree, err error) {
 		root:         nil,
 		size:         0,
 		file:         file,
+		lessFn:       opts.Less,
 		cache:        cache,
 		counter:      new(sync.WaitGroup),
 		syncInterval: 1 * time.Second,
@@ -71,6 +73,7 @@ type BTree struct {
 	size         int64
 	file         *ioutils.File
 	cache        *lru.LRU
+	lessFn       func(a []byte, b []byte) (ok bool)
 	counter      *sync.WaitGroup
 	syncInterval time.Duration
 	closeCh      chan struct{}
@@ -96,7 +99,10 @@ func (tr *BTree) sync() {
 }
 
 func (tr *BTree) less(a, b []byte) bool {
-	return bytes.Compare(a, b) < 0
+	if tr.lessFn == nil {
+		return bytes.Compare(a, b) < 0
+	}
+	return tr.lessFn(a, b)
 }
 
 func (tr *BTree) newNode(leaf bool, idx int64) *node {
@@ -116,25 +122,6 @@ func (tr *BTree) find(n *node, key []byte, hint *pathHint, depth int, write bool
 		err = getErr
 		return
 	}
-	//if hint == nil {
-	//	low := 0
-	//	high := items.size()
-	//	for low < high {
-	//		mid := (low + high) / 2
-	//		if !tr.less(key, items.mustGetEntry(mid).Key()) {
-	//			low = mid + 1
-	//		} else {
-	//			high = mid
-	//		}
-	//	}
-	//	if low > 0 && !tr.less(items.mustGetEntry(low-1).Key(), key) {
-	//		idx = low - 1
-	//		e, found = items.getEntry(idx)
-	//		return idx, e, found, nil
-	//	}
-	//	return low, nil, false, nil
-	//}
-
 	low := 0
 	high := items.size() - 1
 	if depth < 8 && hint.used[depth] {
