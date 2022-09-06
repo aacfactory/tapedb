@@ -33,7 +33,7 @@ func (b Block) Write(p []byte, segmentIdx int64, segmentSize int64) (n int) {
 	return
 }
 
-func (b Block) Read() (p []byte, segmentIdx uint16, segmentSize uint16, has bool) {
+func (b Block) Decode() (p []byte, segmentIdx uint16, segmentSize uint16, has bool) {
 	length := binary.LittleEndian.Uint16(b[0:4])
 	has = length > 0
 	if !has {
