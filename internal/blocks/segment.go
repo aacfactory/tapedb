@@ -2,6 +2,7 @@ package blocks
 
 import (
 	"encoding/binary"
+	"fmt"
 )
 
 func NewSegment(p []byte, blockCapacity int64) (s Segment) {
@@ -10,7 +11,7 @@ func NewSegment(p []byte, blockCapacity int64) (s Segment) {
 	n := 0
 	for i := int64(1); i <= blockSize; i++ {
 		b := Block(s[blockCapacity*(i-1) : blockCapacity*i])
-		n = b.Write(p, i, blockSize)
+		n = b.write(p, i, blockSize)
 		p = p[n:]
 	}
 	return
@@ -28,7 +29,7 @@ func (s Segment) Content() (p []byte, err error) {
 		length := binary.LittleEndian.Uint32(s[blockCapacity*(i-1) : blockCapacity*(i-1)+4])
 		idx := int64(binary.LittleEndian.Uint16(s[blockCapacity*(i-1)+4 : blockCapacity*(i-1)+6]))
 		if idx != i {
-			err = IncompleteSegmentErr
+			err = fmt.Errorf("incomplete")
 			return
 		}
 		p = append(p, s[uint32(blockCapacity*(i-1)):uint32(blockCapacity*i)][uint32(blockCapacity)-length:]...)
