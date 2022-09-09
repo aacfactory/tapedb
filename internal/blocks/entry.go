@@ -1,15 +1,36 @@
 package blocks
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"fmt"
+)
 
-func EncodeToEntry(p []byte, blockCapacity int64) (s Entry) {
+func Encode(p []byte, blockCapacity int64) (s Entry) {
 	blockSize := calcBlockSize(p, blockCapacity)
 	s = make([]byte, blockCapacity*blockSize)
 	n := 0
 	for i := int64(1); i <= blockSize; i++ {
 		b := Block(s[blockCapacity*(i-1) : blockCapacity*i])
-		n = b.Write(p, i, blockSize)
+		n = b.write(p, i, blockSize)
 		p = p[n:]
+	}
+	return
+}
+
+func Decode(entry Entry) (p []byte, err error) {
+	sLen := len(entry)
+	p = make([]byte, 0, len(entry))
+	blockSize := entry.blocks()
+	blockCapacity := int64(sLen) / blockSize
+	blockIdx := int64(binary.LittleEndian.Uint16(entry[4:6]))
+	for i := blockIdx; i <= blockSize; i++ {
+		length := binary.LittleEndian.Uint32(entry[blockCapacity*(i-1) : blockCapacity*(i-1)+4])
+		idx := int64(binary.LittleEndian.Uint16(entry[blockCapacity*(i-1)+4 : blockCapacity*(i-1)+6]))
+		if idx != i {
+			err = fmt.Errorf("incomplete")
+			return
+		}
+		p = append(p, entry[uint32(blockCapacity*(i-1)):uint32(blockCapacity*i)][uint32(blockCapacity)-length:]...)
 	}
 	return
 }
@@ -26,7 +47,7 @@ func (entry Entry) Decode() (p []byte, err error) {
 		length := binary.LittleEndian.Uint32(entry[blockCapacity*(i-1) : blockCapacity*(i-1)+4])
 		idx := int64(binary.LittleEndian.Uint16(entry[blockCapacity*(i-1)+4 : blockCapacity*(i-1)+6]))
 		if idx != i {
-			err = IncompleteSegmentErr
+			err = fmt.Errorf("incomplete")
 			return
 		}
 		p = append(p, entry[uint32(blockCapacity*(i-1)):uint32(blockCapacity*i)][uint32(blockCapacity)-length:]...)
