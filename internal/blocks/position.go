@@ -7,52 +7,62 @@ import (
 	"strings"
 )
 
-func NewPosition(blockNo int64, num int64) (v Position) {
+func ComparePosition(a Position, b Position) bool {
+	return a.No() < b.No()
+}
+
+func NewPosition(bn int64, idx uint32, size uint32) (v Position) {
 	v = make([]byte, 16)
-	binary.BigEndian.PutUint64(v[0:8], uint64(blockNo))
-	binary.LittleEndian.PutUint64(v[8:16], uint64(num))
+	binary.BigEndian.PutUint64(v[0:8], uint64(bn))
+	binary.LittleEndian.PutUint32(v[8:12], idx)
+	binary.LittleEndian.PutUint32(v[12:16], size)
 	return
 }
 
 type Position []byte
 
 func (p Position) String() (v string) {
-	v = fmt.Sprintf("%d:%d", p.BlockNo(), p.BlockNum())
+	v = fmt.Sprintf("%d:%d:%d", p.No(), p.Idx(), p.Size())
 	return
 }
 
-func (p Position) BlockNo() (v int64) {
+func (p Position) No() (v int64) {
 	v = int64(binary.BigEndian.Uint64(p[0:8]))
 	return
 }
 
-func (p Position) BlockNum() (v int64) {
-	v = int64(binary.LittleEndian.Uint64(p[8:16]))
+func (p Position) Idx() (v uint32) {
+	v = binary.LittleEndian.Uint32(p[8:12])
 	return
 }
 
-func (p Position) LT(a Position) (ok bool) {
-	ok = p.BlockNo() < a.BlockNo()
+func (p Position) Size() (v uint32) {
+	v = binary.LittleEndian.Uint32(p[12:16])
 	return
 }
 
 func ParsePosition(s string) (i Position, err error) {
 	items := strings.Split(s, ":")
-	if len(items) != 2 {
+	if len(items) != 3 {
 		err = fmt.Errorf("invalid index")
 		return
 	}
-	blockNo, num := int64(0), int64(0)
-	blockNo, err = strconv.ParseInt(items[0], 10, 64)
+	bn, idx, size := int64(0), uint64(0), uint64(0)
+	bn, err = strconv.ParseInt(items[0], 10, 64)
 	if err != nil {
 		err = fmt.Errorf("invalid index")
 		return
 	}
-	num, err = strconv.ParseInt(items[1], 10, 64)
+	idx, err = strconv.ParseUint(items[1], 10, 64)
 	if err != nil {
 		err = fmt.Errorf("invalid index")
 		return
 	}
-	i = NewPosition(blockNo, num)
+	size, err = strconv.ParseUint(items[2], 10, 64)
+	if err != nil {
+		err = fmt.Errorf("invalid index")
+		return
+	}
+	i = NewPosition(bn, uint32(idx), uint32(size))
 	return
 }
