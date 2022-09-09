@@ -120,6 +120,18 @@ func (f *File) File() (file *os.File) {
 	return
 }
 
+func (f *File) Size() (n int64, err error) {
+	f.mutex.RLock()
+	defer f.mutex.RUnlock()
+	stat, statErr := f.file.Stat()
+	if statErr != nil {
+		err = statErr
+		return
+	}
+	n = stat.Size()
+	return
+}
+
 func (f *File) WriteAt(offset int64, p []byte) (err error) {
 	f.mutex.Lock()
 	err = WriteRegion(f.file, offset, p)
