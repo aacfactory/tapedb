@@ -10,9 +10,10 @@ func calcBlockSize(p []byte, blockCapacity int64) (size int64) {
 	return
 }
 
+// [no][segNo][segSize][content_size][...content]
 type Block []byte
 
-func (b Block) Write(p []byte, segmentIdx int64, segmentSize int64) (n int) {
+func (b Block) write(p []byte, segmentIdx int64, segmentSize int64) (n int) {
 	bLen := len(b) - 8
 	pLen := len(p)
 	if pLen-bLen < 0 {
@@ -33,7 +34,7 @@ func (b Block) Write(p []byte, segmentIdx int64, segmentSize int64) (n int) {
 	return
 }
 
-func (b Block) Decode() (p []byte, segmentIdx uint16, segmentSize uint16, has bool) {
+func (b Block) read() (p []byte, segmentIdx uint16, segmentSize uint16, has bool) {
 	length := binary.LittleEndian.Uint16(b[0:4])
 	has = length > 0
 	if !has {
